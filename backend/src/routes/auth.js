@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const { db } = require('../config/database');
 const auth = require('../middleware/auth');
-const { signAccessToken, generateRefreshToken, persistRefreshToken, rotateRefreshToken, revokeRefreshToken } = require('../utils/tokens');
+const { signAccessToken, generateRefreshToken, persistRefreshToken, rotateRefreshToken, revokeRefreshToken, detectReuseAndRevoke } = require('../utils/tokens');
 const { AuthError, ValidationError } = require('../errors/AppError');
 
 const router = express.Router();
@@ -65,23 +65,15 @@ router.post('/refresh', async (req, res, next) => {
   try {
     const token = req.cookies?.refresh_token;
     if (!token) throw new AuthError('No refresh token');
-    // Decode access token if provided for user id fallback
-    const payload = req.body?.currentToken ? jwt.decode(req.body.currentToken) : null;
-    let userId = payload?.id;
-    if (!userId) {
-      // Find matching refresh token hash to get user id (extra query cost, acceptable)
-      // For security we do not reveal if invalid
-      // This path could be optimized with JTI storing user id
-    }
-    // Rotate
-    if (!userId) {
-      // Attempt to derive from stored token hash scan (not efficient for large scale; placeholder) – skip
-    }
-    // For now require current access token body decode, else unauthorized
-    if (!userId) throw new AuthError('Invalid context');
-    const rotated = await rotateRefreshToken(token, userId, req.headers['user-agent'], req.ip);
+    const crypto = require('crypto');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const stored = await db('refresh_tokens').where({ token_hash: tokenHash }).orderBy('created_at','desc').first();
+    if (!stored || stored.revoked_at) throw new AuthError('Invalid refresh token');
+    const user = await db('users').where({ id: stored.user_id }).first();
+    if (!user) throw new AuthError('Invalid user');
+    const rotated = await rotateRefreshToken(token, user.id, req.headers['user-agent'], req.ip);
     if (!rotated) throw new AuthError('Invalid refresh token');
-    const newAccess = signAccessToken({ id: userId, email: payload?.email });
+    const newAccess = signAccessToken({ id: user.id, email: user.email });
     res.cookie('refresh_token', rotated.token, { httpOnly: true, sameSite: 'strict', secure: false, path: '/api/v1/auth' });
     res.json({ token: newAccess });
   } catch (err) { next(err); }
@@ -105,6 +97,25 @@ router.get('/me', auth, async (req, res) => {
     firstName: req.user.first_name,
     lastName: req.user.last_name
   });
+});
+
+// List sessions (refresh tokens)
+router.get('/sessions', auth, async (req, res, next) => {
+  try {
+    const rows = await db('refresh_tokens')
+      .where({ user_id: req.user.id })
+      .orderBy('created_at','desc')
+      .select('id','created_at','revoked_at','replaced_by','user_agent','ip','last_used_at');
+    res.json({ sessions: rows });
+  } catch (err) { next(err); }
+});
+
+// Revoke a single session
+router.delete('/sessions/:id', auth, async (req, res, next) => {
+  try {
+    await db('refresh_tokens').where({ id: req.params.id, user_id: req.user.id }).update({ revoked_at: new Date() });
+    res.json({ success: true });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

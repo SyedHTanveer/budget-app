@@ -42,4 +42,16 @@ async function revokeRefreshToken(token) {
   await db('refresh_tokens').where({ token_hash: hash }).update({ revoked_at: new Date() });
 }
 
-module.exports = { signAccessToken, generateRefreshToken, persistRefreshToken, rotateRefreshToken, revokeRefreshToken };
+// Detect refresh token reuse: if a revoked token hash is seen again, revoke all active tokens for the user.
+async function detectReuseAndRevoke(tokenHash, userId) {
+  const token = await db('refresh_tokens').where({ token_hash: tokenHash, user_id: userId }).first();
+  if (!token) return false; // nothing to do
+  if (token.revoked_at) {
+    // Reuse detected – revoke all active tokens for the user
+    await db('refresh_tokens').where({ user_id: userId, revoked_at: null }).update({ revoked_at: new Date() });
+    return true;
+  }
+  return false;
+}
+
+module.exports = { signAccessToken, generateRefreshToken, persistRefreshToken, rotateRefreshToken, revokeRefreshToken, detectReuseAndRevoke };

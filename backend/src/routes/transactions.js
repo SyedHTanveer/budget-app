@@ -13,7 +13,10 @@ router.get('/', auth, async (req, res) => {
       category, 
       account_id, 
       start_date, 
-      end_date 
+      end_date,
+      q,
+      min_amount,
+      max_amount
     } = req.query;
 
     let query = db('transactions')
@@ -37,6 +40,21 @@ router.get('/', auth, async (req, res) => {
     }
     if (end_date) {
       query = query.where('transactions.date', '<=', end_date);
+    }
+    if (q) {
+      const like = `%${q}%`;
+      query = query.where(builder => {
+        builder.where('transactions.name', 'like', like)
+          .orWhere('transactions.description', 'like', like);
+      });
+    }
+    if (min_amount) {
+      const min = parseFloat(min_amount);
+      if (!isNaN(min)) query = query.whereRaw('ABS(transactions.amount) >= ?', [min]);
+    }
+    if (max_amount) {
+      const max = parseFloat(max_amount);
+      if (!isNaN(max)) query = query.whereRaw('ABS(transactions.amount) <= ?', [max]);
     }
 
     // Get total count

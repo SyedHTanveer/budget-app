@@ -97,6 +97,7 @@ export function AlertsPanel() {
               </div>
               <div className="flex items-center space-x-2">
                 <Button variant="outline" size="sm" onClick={()=> setExpandedId(isOpen? null : a.id)}>{isOpen? 'Hide' : 'Events'}</Button>
+                <Button variant="outline" size="sm" onClick={async ()=>{ await updateAlert({ id:a.id, threshold: a.threshold, comparison: a.comparison }).unwrap(); }}>Save</Button>
                 <Button variant="ghost" size="icon" onClick={()=> handleDelete(a.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -104,6 +105,22 @@ export function AlertsPanel() {
             </div>
             {isOpen && (
               <div className="mt-3 border-t pt-3 space-y-2 text-xs">
+                <div className="flex gap-2 items-end mb-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide">Threshold</label>
+                    <Input value={a.threshold} onChange={(e)=> a.threshold = Number(e.target.value)} className="h-7 text-xs w-24" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide">Comparison</label>
+                    <Select value={a.comparison} onValueChange={(val: string)=> a.comparison = val}>
+                      <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent className="text-xs">
+                        <SelectItem value="lte">lte</SelectItem>
+                        <SelectItem value="gte">gte</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 {eventsLoading && <div className="text-muted-foreground">Loading events...</div>}
                 {(eventsData?.events || []).map((ev:any) => (
                   <div key={ev.id} className="flex items-start justify-between">

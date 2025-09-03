@@ -13,6 +13,11 @@ import {
   ArrowDownRight,
   Filter
 } from "lucide-react";
+import { useGetTransactionsQuery, useUpdateTransactionCategoryMutation, useGetBudgetCategoriesQuery, useGetAccountsQuery } from "../store/api";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
+import { toast } from 'sonner';
+import { useDebounce } from '../hooks';
+import { Skeleton } from "./ui/skeleton";
 
 interface Transaction {
   id: number;
@@ -27,78 +32,35 @@ interface Transaction {
 
 export function TransactionFeed() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  const [accountId, setAccountId] = useState<string>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
+  const { data, isLoading } = useGetTransactionsQuery({ page, limit: 10, category: selectedCategory && selectedCategory !== 'All' ? selectedCategory : undefined, q: debouncedSearch || undefined, min_amount: minAmount ? parseFloat(minAmount) : undefined, max_amount: maxAmount ? parseFloat(maxAmount) : undefined, account_id: accountId || undefined, start_date: startDate || undefined, end_date: endDate || undefined });
+  const transactions = (data?.transactions || []).map((t: any) => ({
+    id: t.id,
+    description: t.name || t.description,
+    amount: t.amount,
+    type: t.amount > 0 ? 'income' : 'expense',
+    category: t.category || t.primary_category || 'Uncategorized',
+    date: t.date || t.posted_at || '',
+    icon: t.amount > 0 ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />,
+    pending: t.pending
+  }));
 
-  const transactions: Transaction[] = [
-    {
-      id: 1,
-      description: "Starbucks",
-      amount: -5.47,
-      type: 'expense',
-      category: 'Food & Drink',
-      date: 'Today',
-      icon: <Coffee className="h-4 w-4" />
-    },
-    {
-      id: 2,
-      description: "Salary Deposit",
-      amount: 3200.00,
-      type: 'income',
-      category: 'Income',
-      date: 'Today',
-      icon: <ArrowDownRight className="h-4 w-4" />
-    },
-    {
-      id: 3,
-      description: "Amazon Purchase",
-      amount: -89.99,
-      type: 'expense',
-      category: 'Shopping',
-      date: 'Yesterday',
-      icon: <ShoppingBag className="h-4 w-4" />,
-      pending: true
-    },
-    {
-      id: 4,
-      description: "Uber Ride",
-      amount: -15.30,
-      type: 'expense',
-      category: 'Transport',
-      date: 'Yesterday',
-      icon: <Car className="h-4 w-4" />
-    },
-    {
-      id: 5,
-      description: "Rent Payment",
-      amount: -1200.00,
-      type: 'expense',
-      category: 'Bills',
-      date: '2 days ago',
-      icon: <Home className="h-4 w-4" />
-    },
-    {
-      id: 6,
-      description: "Chipotle",
-      amount: -12.45,
-      type: 'expense',
-      category: 'Food & Drink',
-      date: '2 days ago',
-      icon: <Utensils className="h-4 w-4" />
-    },
-    {
-      id: 7,
-      description: "Credit Card Payment",
-      amount: -450.00,
-      type: 'expense',
-      category: 'Bills',
-      date: '3 days ago',
-      icon: <CreditCard className="h-4 w-4" />
-    }
-  ];
-
-  const categories = ['All', 'Food & Drink', 'Shopping', 'Transport', 'Bills', 'Income'];
+  const { data: categoriesData } = useGetBudgetCategoriesQuery();
+  const { data: accountsData } = useGetAccountsQuery();
+  const categoryOptions: string[] = ['All', ...(categoriesData ? categoriesData.map((c:any)=>c.name) : [])];
+  const [updateCategory] = useUpdateTransactionCategoryMutation();
+  const [editingId, setEditingId] = useState<string|number|null>(null);
+  const [editingValue, setEditingValue] = useState('');
 
   const filteredTransactions = selectedCategory && selectedCategory !== 'All' 
-    ? transactions.filter(t => t.category === selectedCategory)
+    ? transactions.filter((t: any) => t.category === selectedCategory)
     : transactions;
 
   const getCategoryColor = (category: string) => {
@@ -112,6 +74,12 @@ export function TransactionFeed() {
     return colors[category] || 'bg-gray-100 text-gray-700';
   };
 
+  const hasMore = data?.pagination ? page < data.pagination.pages : (transactions.length === 10);
+
+  if (isLoading) {
+    return <div className="space-y-3">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-16" />)}</div>;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -124,12 +92,12 @@ export function TransactionFeed() {
 
       {/* Category Filter */}
       <div className="flex space-x-2 overflow-x-auto pb-2">
-        {categories.map((category) => (
+        {categoryOptions.map((category) => (
           <Button
             key={category}
             variant={selectedCategory === category ? "default" : "outline"}
             size="sm"
-            onClick={() => setSelectedCategory(category)}
+            onClick={() => { setSelectedCategory(category); setPage(1); }}
             className="whitespace-nowrap"
           >
             {category}
@@ -137,9 +105,40 @@ export function TransactionFeed() {
         ))}
       </div>
 
+      {/* Search and Amount Filter */}
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex flex-col w-40">
+          <label className="text-xs text-muted-foreground">Account</label>
+          <select value={accountId} onChange={e=>{ setAccountId(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs">
+            <option value="">All</option>
+            {accountsData?.accounts?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col">
+          <label className="text-xs text-muted-foreground">From</label>
+          <input type="date" value={startDate} onChange={e=>{ setStartDate(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs" />
+        </div>
+        <div className="flex flex-col">
+          <label className="text-xs text-muted-foreground">To</label>
+          <input type="date" value={endDate} onChange={e=>{ setEndDate(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs" />
+        </div>
+        <div className="flex flex-col">
+          <label className="text-xs text-muted-foreground">Search</label>
+          <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs" placeholder="Description" />
+        </div>
+        <div className="flex flex-col w-20">
+          <label className="text-xs text-muted-foreground">Min $</label>
+          <input value={minAmount} onChange={e=>{ setMinAmount(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs" />
+        </div>
+        <div className="flex flex-col w-20">
+          <label className="text-xs text-muted-foreground">Max $</label>
+            <input value={maxAmount} onChange={e=>{ setMaxAmount(e.target.value); setPage(1); }} className="border px-2 py-1 rounded text-xs" />
+        </div>
+      </div>
+
       {/* Transactions List */}
       <div className="space-y-3">
-        {filteredTransactions.map((transaction) => (
+        {transactions.map((transaction: any) => (
           <Card key={transaction.id} className="p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -148,9 +147,9 @@ export function TransactionFeed() {
                 }`}>
                   {transaction.icon}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium">{transaction.description}</span>
+                    <span className="font-medium truncate max-w-[200px]" title={transaction.description}>{transaction.description}</span>
                     {transaction.pending && (
                       <Badge variant="secondary" className="text-xs">
                         Pending
@@ -158,12 +157,40 @@ export function TransactionFeed() {
                     )}
                   </div>
                   <div className="flex items-center space-x-2 mt-1">
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${getCategoryColor(transaction.category)}`}
-                    >
-                      {transaction.category}
-                    </Badge>
+                    {editingId === transaction.id ? (
+                      <Select
+                        value={editingValue}
+                        onValueChange={async (val: string)=>{
+                          setEditingValue(val);
+                          try {
+                            await updateCategory({ id: transaction.id, category: val }).unwrap();
+                            toast.success('Category updated');
+                          } catch (e:any) {
+                            toast.error(e.message||'Update failed');
+                          } finally {
+                            setEditingId(null);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-6 px-2 text-xs w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="text-xs max-h-64">
+                          {categoryOptions.filter(c=>c!=='All').map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge 
+                        onClick={()=>{ setEditingId(transaction.id); setEditingValue(transaction.category); }}
+                        variant="outline" 
+                        className={`text-xs cursor-pointer ${getCategoryColor(transaction.category)}`}
+                        title="Click to change category"
+                      >
+                        {transaction.category}
+                      </Badge>
+                    )}
                     <span className="text-sm text-muted-foreground">
                       {transaction.date}
                     </span>
@@ -182,10 +209,11 @@ export function TransactionFeed() {
           </Card>
         ))}
       </div>
-
-      <Button variant="outline" className="w-full">
-        View All Transactions
-      </Button>
+      <div className="flex justify-between items-center pt-2">
+        <Button variant="outline" size="sm" disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Prev</Button>
+        <span className="text-xs text-muted-foreground">Page {page}</span>
+        <Button variant="outline" size="sm" disabled={!hasMore} onClick={()=>setPage(p=>p+1)}>Next</Button>
+      </div>
     </div>
   );
 }

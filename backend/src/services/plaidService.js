@@ -66,27 +66,88 @@ class PlaidService {
         })
         .returning('*');
 
-      // Store accounts
+      // Store / upsert accounts with extended metadata
       const accounts = [];
+      const itemInstitutionName = accountsResponse.data.item?.institution_name;
+      const itemInstitutionId = accountsResponse.data.item?.institution_id;
       for (const account of accountsResponse.data.accounts) {
-        const [dbAccount] = await db('accounts')
-          .insert({
-            user_id: userId,
-            plaid_account_id: account.account_id,
-            name: account.name,
-            type: this.mapAccountType(account.type),
-            balance: account.balances.current || 0,
-            currency: account.balances.iso_currency_code || 'USD',
-          })
-          .returning('*');
-        
+        const baseRecord = {
+          user_id: userId,
+          plaid_account_id: account.account_id,
+          name: account.name,
+          official_name: account.official_name || null,
+          institution_name: itemInstitutionName || null,
+          institution_id: itemInstitutionId || null,
+          item_id: itemId,
+          type: this.mapAccountType(account.type),
+          subtype: account.subtype || null,
+          mask: account.mask || null,
+          balance: account.balances.current || 0,
+          available_balance: account.balances.available != null ? account.balances.available : null,
+          currency: account.balances.iso_currency_code || 'USD',
+          raw_plaid_meta: JSON.stringify(account)
+        };
+        let dbAccount;
+        try {
+          [dbAccount] = await db('accounts')
+            .insert(baseRecord)
+            .onConflict(['user_id','plaid_account_id'])
+            .merge({
+              name: baseRecord.name,
+              official_name: baseRecord.official_name,
+              institution_name: baseRecord.institution_name,
+              institution_id: baseRecord.institution_id,
+              item_id: baseRecord.item_id,
+              type: baseRecord.type,
+              subtype: baseRecord.subtype,
+              mask: baseRecord.mask,
+              balance: baseRecord.balance,
+              available_balance: baseRecord.available_balance,
+              currency: baseRecord.currency,
+              raw_plaid_meta: baseRecord.raw_plaid_meta,
+              updated_at: new Date()
+            })
+            .returning('*');
+        } catch (e) {
+          if (e.message && e.message.includes('RETURNING')) {
+            await db('accounts')
+              .insert(baseRecord)
+              .onConflict(['user_id','plaid_account_id'])
+              .merge({
+                name: baseRecord.name,
+                official_name: baseRecord.official_name,
+                institution_name: baseRecord.institution_name,
+                institution_id: baseRecord.institution_id,
+                item_id: baseRecord.item_id,
+                type: baseRecord.type,
+                subtype: baseRecord.subtype,
+                mask: baseRecord.mask,
+                balance: baseRecord.balance,
+                available_balance: baseRecord.available_balance,
+                currency: baseRecord.currency,
+                raw_plaid_meta: baseRecord.raw_plaid_meta,
+                updated_at: new Date()
+              });
+            dbAccount = await db('accounts').where({ user_id: userId, plaid_account_id: account.account_id }).first();
+          } else {
+            throw e;
+          }
+        }
         accounts.push(dbAccount);
       }
 
-      // Sync initial transactions
-      await this.syncTransactions(userId, accessToken, null, false); // false = don't decrypt, it's fresh
-
-      return { item, accounts };
+      // Attempt initial lightweight transaction sync; handle PRODUCT_NOT_READY gracefully
+      try {
+        await this.syncTransactions(userId, accessToken, null, false); // false = already decrypted
+        return { item, accounts, status: 'complete' };
+      } catch (err) {
+        const code = err?.response?.data?.error_code;
+        if (code === 'PRODUCT_NOT_READY') {
+          // Queue background sync (placeholder – no queue implementation yet)
+          return { item, accounts, status: 'pending' };
+        }
+        throw err;
+      }
     } catch (error) {
       console.error('Plaid token exchange error:', error);
       throw error;

@@ -6,7 +6,7 @@ interface UserInfo { id: string; email: string; }
 
 interface AuthState {
   user: UserInfo | null;
-  status: 'idle' | 'loading' | 'authenticated' | 'error';
+  status: 'idle' | 'loading' | 'authenticated' | 'error' | 'checking';
   error?: string;
 }
 
@@ -28,7 +28,6 @@ export const fetchMe = createAsyncThunk<UserInfo, void, { rejectValue: string }>
 interface LoginResponse { user: UserInfo; token?: string; }
 
 export const initAuth = createAsyncThunk<void, void, { rejectValue: string }>('auth/init', async (_, { dispatch }) => {
-  // Try refresh first
   try {
     const refreshRes = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' });
     if (refreshRes.ok) {
@@ -84,7 +83,8 @@ const authSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMe.pending, (state) => { state.status = 'loading'; })
+      .addCase(initAuth.pending, (state) => { state.status = 'checking'; })
+      .addCase(fetchMe.pending, (state) => { state.status = 'checking'; })
       .addCase(fetchMe.fulfilled, (state, action: PayloadAction<UserInfo>) => {
         state.status = 'authenticated';
         state.user = action.payload;

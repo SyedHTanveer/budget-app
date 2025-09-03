@@ -1,5 +1,5 @@
 {
-      "name": "Mobile Budgeting App Interface",
+      "name": "budget-frontend",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
@@ -45,12 +45,17 @@
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
             "tailwind-merge": "*",
-            "vaul": "^1.1.2"
+            "vaul": "^1.1.2",
+            "@reduxjs/toolkit": "^2.2.0",
+            "react-redux": "^9.0.0",
+            "react-router-dom": "^6.23.0"
       },
       "devDependencies": {
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
-            "vite": "6.3.5"
+            "vite": "6.3.5",
+            "@types/react-router-dom": "^5.3.3",
+            "@types/react-dom": "^18.3.0"
       },
       "scripts": {
             "dev": "vite",

@@ -28,9 +28,17 @@ router.post('/exchange-token', auth, async (req, res) => {
     }
 
     const result = await PlaidService.exchangePublicToken(req.user.id, publicToken);
-    console.log('Token exchange completed. Accounts created:', result.accounts.length);
+    console.log('Token exchange completed. Accounts created:', result.accounts.length, 'status:', result.status);
+    if (result.status === 'pending') {
+      return res.status(202).json({ status: 'pending' });
+    }
     res.json(result);
   } catch (error) {
+    // Detect PRODUCT_NOT_READY fallback just in case
+    const code = error?.response?.data?.error_code;
+    if (code === 'PRODUCT_NOT_READY') {
+      return res.status(202).json({ status: 'pending' });
+    }
     console.error('Token exchange error:', error);
     res.status(500).json({ error: 'Failed to exchange token' });
   }

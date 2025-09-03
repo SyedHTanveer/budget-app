@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from './store/store';
+import { initAuth, login as loginAction, logout as logoutAction } from './store/authSlice';
 import { Dashboard } from "./components/Dashboard";
 import { AIAssistant } from "./components/AIAssistant";
 import { Goals } from "./components/Goals";
@@ -26,26 +29,39 @@ import {
   Sparkles,
   Plus,
   MessageCircle,
-  PieChart
+  PieChart,
+  Download,
+  Plane,
+  Shield
 } from "lucide-react";
+import { AlertsPanel } from "./components/AlertsPanel";
+import { ExportJobsPanel } from "./components/ExportJobsPanel";
+import { SessionsPanel } from "./components/SessionsPanel";
+import { VacationPeriodsPanel } from "./components/VacationPeriodsPanel";
+import { PrivacyPanel } from "./components/PrivacyPanel";
 
-type Tab = 'dashboard' | 'budget' | 'goals' | 'transactions' | 'calendar';
+type Tab = 'dashboard' | 'budget' | 'goals' | 'transactions' | 'calendar' | 'alerts' | 'exports' | 'sessions' | 'vacation' | 'privacy';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConnectBankOpen, setIsConnectBankOpen] = useState(false);
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
 
+  const dispatch = useDispatch();
+  const auth = useSelector((s: RootState) => s.auth);
+  const isAuthenticated = auth.status === 'authenticated';
+
+  useEffect(() => { if (auth.status === 'idle') dispatch(initAuth() as any); }, [dispatch]);
+
   const handleLogin = (email: string, password: string) => {
-    // Mock authentication - in real app, validate with backend
-    setIsAuthenticated(true);
+    dispatch(loginAction({ email, password }) as any);
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    dispatch(logoutAction() as any);
     setActiveTab('dashboard');
   };
 
@@ -54,7 +70,12 @@ export default function App() {
     { id: 'budget' as Tab, label: 'Budget', icon: PieChart },
     { id: 'goals' as Tab, label: 'Goals', icon: Target },
     { id: 'transactions' as Tab, label: 'Transactions', icon: List },
+    { id: 'alerts' as Tab, label: 'Alerts', icon: Bell },
+    { id: 'exports' as Tab, label: 'Exports', icon: Download },
     { id: 'calendar' as Tab, label: 'Calendar', icon: CalendarIcon },
+    { id: 'sessions' as Tab, label: 'Sessions', icon: User },
+    { id: 'vacation' as Tab, label: 'Vacation', icon: Plane },
+    { id: 'privacy' as Tab, label: 'Privacy', icon: Shield },
   ];
 
   // Show login page if not authenticated
@@ -74,6 +95,16 @@ export default function App() {
         return <TransactionFeed />;
       case 'calendar':
         return <Calendar />;
+      case 'alerts':
+        return <AlertsPanel />;
+      case 'exports':
+        return <ExportJobsPanel />;
+      case 'sessions':
+        return <SessionsPanel />;
+      case 'vacation':
+        return <VacationPeriodsPanel />;
+      case 'privacy':
+        return <PrivacyPanel />;
       default:
         return <Dashboard />;
     }
@@ -185,7 +216,7 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="lg:ml-64 lg:mr-80 flex-1">
+      <div className="lg:ml-64 lg:mr-80 flex-1 h-screen">
         {/* Mobile Header */}
         <div className="lg:hidden bg-white border-b sticky top-0 z-10">
           <div className="flex items-center justify-between p-4">
@@ -224,6 +255,8 @@ export default function App() {
                 {activeTab === 'goals' && 'Track your savings goals and progress'}
                 {activeTab === 'transactions' && 'Review your recent transactions'}
                 {activeTab === 'calendar' && 'View upcoming bills and payments'}
+                {activeTab === 'alerts' && 'View important alerts and notifications'}
+                {activeTab === 'exports' && 'Manage your data export jobs'}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -284,7 +317,7 @@ export default function App() {
         {/* Main Content */}
         <div className="p-4 lg:p-6 pb-24 lg:pb-6">
           <div className="max-w-full mx-auto">
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto">
               {renderContent()}
             </div>
           </div>

@@ -30,10 +30,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   const handleDemoLogin = () => {
-    setEmail("alex@example.com");
-    setPassword("demo123");
+    setEmail("demo@budgetapp.com");
+    setPassword("password123");
     setTimeout(() => {
-      onLogin("alex@example.com", "demo123");
+      onLogin("demo@budgetapp.com", "password123");
     }, 500);
   };
 

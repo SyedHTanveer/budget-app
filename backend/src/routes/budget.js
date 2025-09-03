@@ -1,6 +1,7 @@
 const express = require('express');
 const BudgetEngine = require('../services/budgetEngine');
 const auth = require('../middleware/auth');
+const { getQueue } = require('../queue/adapter');
 
 const router = express.Router();
 
@@ -87,6 +88,9 @@ router.post('/categories', auth, async (req, res) => {
           color: category.color || 'bg-gray-100 text-gray-700',
           description: category.description || '',
           monthly_limit: category.monthlyLimit || 0,
+          rollover_mode: category.rollover_mode || 'none',
+          carry_over_percent: category.carry_over_percent || 0,
+          savings_goal_id: category.savings_goal_id || null,
           current_spent: 0, // Reset spending
           is_active: true,
           updated_at: new Date()
@@ -190,6 +194,33 @@ router.get('/categories/spending', auth, async (req, res) => {
   } catch (error) {
     console.error('Get category spending error:', error);
     res.status(500).json({ error: 'Failed to fetch category spending' });
+  }
+});
+
+// Close month & trigger rollover
+router.post('/close-month', auth, async (req, res) => {
+  try {
+    // Enqueue rollover job (lightweight payload)
+    try {
+      const q = getQueue && getQueue('rollover');
+      if (q) {
+        await q.add('close_month', { userId: req.user.id });
+        return res.status(202).json({ status: 'queued' });
+      }
+    } catch (err) {
+      // Fallback: direct execution if queue unavailable
+      try {
+        const RolloverService = require('../services/rolloverService');
+        const result = await RolloverService.closeMonth(req.user.id);
+        return res.json({ status: 'completed', result });
+      } catch (inner) {
+        console.error('Direct rollover failed', inner);
+      }
+    }
+    res.status(503).json({ error: 'Rollover queue unavailable' });
+  } catch (error) {
+    console.error('Close month error:', error);
+    res.status(500).json({ error: 'Failed to close month' });
   }
 });
 

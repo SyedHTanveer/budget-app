@@ -57,7 +57,7 @@ export const api = createApi({
     }),
 
     // Transactions
-    getTransactions: builder.query<any, { page?: number; limit?: number; category?: string; account_id?: string; start_date?: string; end_date?: string }>({
+    getTransactions: builder.query<any, { page?: number; limit?: number; category?: string; account_id?: string; start_date?: string; end_date?: string; q?: string; min_amount?: number; max_amount?: number }>({
       query: (params) => ({ url: 'transactions', params }),
       providesTags: (res) => ['Transactions']
     }),
@@ -217,11 +217,26 @@ export const api = createApi({
     getQueueStats: builder.query<any, void>({
       query: () => 'ops/queues'
     }),
+
+    // Privacy
+    getPrivacyStatus: builder.query<any, void>({
+      query: () => 'privacy/status'
+    }),
+    exportPrivacyData: builder.mutation<any, void>({
+      query: () => ({ url: 'privacy/export', method: 'POST' })
+    }),
+    deleteAllData: builder.mutation<any, { confirmEmail: string; confirmPassword: string }>({
+      query: (body) => ({ url: 'privacy/delete-all', method: 'DELETE', body })
+    }),
+    disableService: builder.mutation<any, { service: string }>({
+      query: (body) => ({ url: 'privacy/disable-service', method: 'POST', body })
+    }),
   })
 });
 
 export const {
   useGetAccountsQuery,
+  useLazyGetAccountsQuery,
   useUpdateAccountMutation,
   useGetTransactionsQuery,
   useUpdateTransactionCategoryMutation,
@@ -257,6 +272,10 @@ export const {
   useDeleteVacationPeriodMutation,
   useGetPreferencesQuery,
   useUpdatePreferencesMutation,
+  useGetPrivacyStatusQuery,
+  useExportPrivacyDataMutation,
+  useDeleteAllDataMutation,
+  useDisableServiceMutation,
   useGetHealthQuery,
   useGetQueueStatsQuery
 } = api;

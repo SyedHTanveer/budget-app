@@ -1,148 +1,75 @@
-import { useState } from "react";
+import { useGetGoalsQuery, useCreateGoalMutation, useUpdateGoalMutation, useDeleteGoalMutation, useContributeGoalMutation } from '../store/api';
+import { useState } from 'react';
 import { Card } from "./ui/card";
-import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
-import { Plus, Plane, Car, Home, Gift, Edit3 } from "lucide-react";
 import { EditGoalModal } from "./EditGoalModal";
 
-interface Goal {
-  id: number;
-  name: string;
-  currentAmount: number;
-  targetAmount: number;
-  icon: React.ReactNode;
-  color: string;
-  dueDate?: string;
-}
-
-interface GoalsProps {
-  onAddGoal?: () => void;
-}
-
-export function Goals({ onAddGoal }: GoalsProps) {
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+export function Goals({ onAddGoal }: { onAddGoal?: ()=>void }) {
+  const { data, isLoading } = useGetGoalsQuery();
+  const [createGoal] = useCreateGoalMutation();
+  const [updateGoal] = useUpdateGoalMutation();
+  const [deleteGoal] = useDeleteGoalMutation();
+  const [contribute] = useContributeGoalMutation();
+  const [newName, setNewName] = useState('');
+  const [newTarget, setNewTarget] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<any>(null);
+  const goals = data?.goals || [];
 
-  const goals: Goal[] = [
-    {
-      id: 1,
-      name: "Miami Trip",
-      currentAmount: 320,
-      targetAmount: 800,
-      icon: <Plane className="h-5 w-5" />,
-      color: "from-blue-400 to-blue-600",
-      dueDate: "Next weekend"
-    },
-    {
-      id: 2,
-      name: "Emergency Fund",
-      currentAmount: 2400,
-      targetAmount: 5000,
-      icon: <Home className="h-5 w-5" />,
-      color: "from-green-400 to-green-600"
-    },
-    {
-      id: 3,
-      name: "New Car",
-      currentAmount: 1850,
-      targetAmount: 8000,
-      icon: <Car className="h-5 w-5" />,
-      color: "from-purple-400 to-purple-600"
-    },
-    {
-      id: 4,
-      name: "Annual Subscriptions",
-      currentAmount: 45,
-      targetAmount: 300,
-      icon: <Gift className="h-5 w-5" />,
-      color: "from-orange-400 to-orange-600",
-      dueDate: "Due in 2 months"
-    }
-  ];
-
-  const handleEditGoal = (goal: Goal) => {
+  const handleEditGoal = (goal: any) => {
     setEditingGoal(goal);
     setIsEditModalOpen(true);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2>Your Goals</h2>
-        <Button size="sm" className="h-8" onClick={onAddGoal}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Goal
-        </Button>
+        <h2 className="text-lg font-medium">Goals</h2>
+        <div className="flex gap-2">
+          <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Name" className="border rounded px-2 py-1 text-xs" />
+          <input value={newTarget} onChange={e=>setNewTarget(e.target.value)} placeholder="Target $" className="border rounded px-2 py-1 text-xs w-24" />
+          <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded" onClick={async ()=>{ if(!newName||!newTarget) return; await createGoal({ name:newName.trim(), target_amount: parseFloat(newTarget)||0 }).unwrap(); setNewName(''); setNewTarget(''); }}>Add</button>
+        </div>
       </div>
-
-      <div className="space-y-4">
-        {goals.map((goal) => {
-          const progress = (goal.currentAmount / goal.targetAmount) * 100;
-          const remaining = goal.targetAmount - goal.currentAmount;
-          
+      <div className="space-y-3">
+        {goals.map((g:any)=>{
+          const pct = g.target_amount ? (g.current_amount / g.target_amount) * 100 : 0;
           return (
-            <Card key={goal.id} className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center">
-                  <div className={`p-2 rounded-lg bg-gradient-to-r ${goal.color} text-white mr-3`}>
-                    {goal.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{goal.name}</h3>
-                    {goal.dueDate && (
-                      <p className="text-sm text-muted-foreground">{goal.dueDate}</p>
-                    )}
-                  </div>
+            <div key={g.id} className="p-3 border rounded flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate" title={g.name}>{g.name}</span>
+                  {!g.is_active && <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded">Archived</span>}
                 </div>
-                <div className="text-right">
-                  <div className="text-lg">
-                    ${goal.currentAmount.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    of ${goal.targetAmount.toLocaleString()}
-                  </div>
-                </div>
+                <div className="text-xs text-muted-foreground mt-1">${g.current_amount?.toLocaleString()} / ${g.target_amount?.toLocaleString()} ({pct.toFixed(0)}%)</div>
+                <div className="h-1.5 bg-gray-200 rounded mt-2 overflow-hidden"><div style={{width:`${Math.min(100,pct)}%`}} className="h-full bg-blue-500" /></div>
               </div>
-
-              <div className="space-y-2">
-                <Progress value={progress} className="h-2" />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {progress.toFixed(0)}% complete
-                  </span>
-                  <span className="text-muted-foreground">
-                    ${remaining.toLocaleString()} to go
-                  </span>
-                </div>
+              <div className="flex flex-col gap-1 ml-4">
+                <button className="text-[10px] px-2 py-1 border rounded" onClick={async ()=>{ await contribute({ id:g.id, amount:25 }).unwrap(); }}>+25</button>
+                <button className="text-[10px] px-2 py-1 border rounded" onClick={async ()=>{ await updateGoal({ id:g.id, is_active: !g.is_active }).unwrap(); }}>{g.is_active? 'Archive':'Restore'}</button>
+                <button className="text-[10px] px-2 py-1 border rounded text-red-600" onClick={async ()=>{ await deleteGoal({ id:g.id }).unwrap(); }}>Del</button>
               </div>
-
-              <div className="flex justify-center mt-3">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleEditGoal(goal)}
-                  className="flex items-center"
-                >
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Goal
-                </Button>
-              </div>
-            </Card>
+            </div>
           );
         })}
+        {goals.length===0 && !isLoading && <div className="text-xs text-muted-foreground">No goals yet.</div>}
       </div>
 
       {/* Total Progress */}
       <Card className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
         <div className="text-center">
           <div className="text-2xl text-indigo-800 mb-1">
-            ${goals.reduce((sum, goal) => sum + goal.currentAmount, 0).toLocaleString()}
+            ${goals.reduce((sum: number, goal: any) => sum + (goal.current_amount||0), 0).toLocaleString()}
           </div>
           <p className="text-indigo-600 text-sm">
             Total saved across all goals
           </p>
         </div>
       </Card>
+
+      {isEditModalOpen && editingGoal && (
+        <div className="hidden" />
+      )}
 
       <EditGoalModal
         open={isEditModalOpen}
@@ -152,3 +79,5 @@ export function Goals({ onAddGoal }: GoalsProps) {
     </div>
   );
 }
+
+export default Goals;

@@ -8,8 +8,6 @@ const { db } = require('../src/config/database');
 const { v4: uuid } = require('uuid');
 const JSZip = require('jszip');
 
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'testsecretkeytestsecretkey123456';
-
 function makeApp() {
   const app = express();
   app.use(requestContext);
@@ -48,7 +46,7 @@ describe('Export jobs', () => {
     expect(jobRow.status).toBe('pending');
 
     // Minimal datasets to ensure CSVs exist
-    await db('accounts').insert({ id: uuid(), user_id: userId, name: 'Checking', type: 'depository', current_balance: 100 });
+    await db('accounts').insert({ id: uuid(), user_id: userId, name: 'Checking', type: 'depository', balance: 100 });
     await db('transactions').insert({ id: uuid(), user_id: userId, account_id: null, amount: 10, iso_currency_code: 'USD', date: new Date(), name: 'Coffee' });
 
     // Inline processor mimic

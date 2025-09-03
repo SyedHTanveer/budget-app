@@ -6,6 +6,8 @@ import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { User, Bell, Shield, Palette, CreditCard } from "lucide-react";
+import { useGetPreferencesQuery, useUpdatePreferencesMutation } from '../store/api';
+import { useEffect, useState } from 'react';
 
 interface SettingsModalProps {
   open: boolean;
@@ -13,6 +15,23 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  const { data: prefsData } = useGetPreferencesQuery(undefined, { skip: !open });
+  const [updatePrefs, { isLoading: saving }] = useUpdatePreferencesMutation();
+  const prefs = prefsData?.preferences || {};
+  const [currency, setCurrency] = useState('USD');
+  const [theme, setTheme] = useState('light');
+  const [aiOptIn, setAiOptIn] = useState(false);
+  const [emailAlerts, setEmailAlerts] = useState(true);
+
+  useEffect(()=>{
+    if (prefsData?.preferences) {
+      setCurrency(prefs.default_currency || 'USD');
+      setTheme(prefs.theme || 'light');
+      setAiOptIn(!!prefs.ai_opt_in);
+      setEmailAlerts(!!prefs.notifications_email);
+    }
+  }, [prefsData]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -36,26 +55,28 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
           <TabsContent value="profile" className="space-y-4">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue="Alex Johnson" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="alex@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" defaultValue="+1 (555) 123-4567" />
-              </div>
-              <Separator />
+              {/* Replace static fields with editable preference subset */}
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency</Label>
-                <Input id="currency" defaultValue="USD" />
+                <Input id="currency" value={currency} onChange={e=> setCurrency(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Input id="timezone" defaultValue="America/New_York" />
+                <Label htmlFor="theme">Theme</Label>
+                <Input id="theme" value={theme} onChange={e=> setTheme(e.target.value)} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>AI Assistant</Label>
+                  <p className="text-sm text-muted-foreground">Enable conversational budgeting guidance</p>
+                </div>
+                <Switch checked={aiOptIn} onCheckedChange={setAiOptIn} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Email Alerts</Label>
+                  <p className="text-sm text-muted-foreground">Receive spending & goal notifications</p>
+                </div>
+                <Switch checked={emailAlerts} onCheckedChange={setEmailAlerts} />
               </div>
             </div>
           </TabsContent>
@@ -153,8 +174,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onOpenChange(false)}>
-            Save Changes
+          <Button onClick={async () => { await updatePrefs({ default_currency: currency, theme, ai_opt_in: aiOptIn, notifications_email: emailAlerts }).unwrap(); onOpenChange(false); }} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       </DialogContent>

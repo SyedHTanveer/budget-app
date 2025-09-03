@@ -9,7 +9,22 @@ router.get('/', auth, async (req, res) => {
   try {
     const accounts = await db('accounts')
       .where({ user_id: req.user.id, is_active: true })
-      .select('id', 'name', 'type', 'balance', 'currency', 'created_at')
+      .select(
+        'id',
+        'name',
+        'official_name',
+        'institution_name',
+        'institution_id',
+        'plaid_account_id',
+        'item_id',
+        'type',
+        'subtype',
+        'mask',
+        'balance',
+        'available_balance',
+        'currency',
+        'created_at'
+      )
       .orderBy('type')
       .orderBy('name');
 
