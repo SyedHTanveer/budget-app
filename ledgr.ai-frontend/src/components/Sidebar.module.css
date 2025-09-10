@@ -1,0 +1,9 @@
+.header {
+  background-color: #507E52;
+}
+
+.logo {
+  height: 1rem; /* h-8 */
+  width: 1rem;  /* w-8 */
+  margin: .5rem; /* m-4 */
+}
