@@ -27,12 +27,8 @@ function Dashboard() {
             </div>
         </div>
         <div className="flex flex-col flex-1 gap-6 rounded-t-md bg-neutral-900 w-full p-8 overflow-auto ">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <div className="xl:col-span-2 space-y-4">
-              <TopMetrics />
-            </div>
-            <PayPeriodCard />
-          </div>
+          <TopMetrics />   
+          <PayPeriodCard />
           <BreakdownSection />
           <BalancesSection />
           <GoalsAndTransactions />

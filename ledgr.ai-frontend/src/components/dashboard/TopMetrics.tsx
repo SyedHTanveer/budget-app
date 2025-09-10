@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
+import { MetricTile } from '../ui/metric-tile';
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, LineChart, Line, YAxis, XAxis } from 'recharts';
 
@@ -57,10 +58,7 @@ export function TopMetrics() {
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs text-neutral-300">
             {spendingSummary.map(item => (
-              <div key={item.label} className="flex flex-col justify-center rounded-sm bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent border border-neutral-700/40 px-3 py-2">
-                <span className="text-[10px] uppercase tracking-wide text-neutral-500">{item.label}</span>
-                <span className="text-sm font-medium text-neutral-200">{item.value}</span>
-              </div>
+              <MetricTile key={item.label} label={item.label} value={item.value} variant="indigo" />
             ))}
           </div>
         </CardContent>
@@ -86,10 +84,7 @@ export function TopMetrics() {
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs text-neutral-300">
             {cashFlow.map(item => (
-              <div key={item.label} className="flex flex-col justify-center rounded-sm bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent border border-neutral-700/40 px-3 py-2">
-                <span className="text-[10px] uppercase tracking-wide text-neutral-500">{item.label}</span>
-                <span className="text-sm font-medium text-neutral-200">{item.value}</span>
-              </div>
+              <MetricTile key={item.label} label={item.label} value={item.value} variant="emerald" />
             ))}
           </div>
         </CardContent>
