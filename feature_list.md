@@ -190,9 +190,9 @@ He’s tired of juggling Mint, Rocket Money, and his bank’s app. He doesn’t 
 
 Partially covered (refine or extract):
 
-Severity system (needs central util + config token mapping).
-Metrics tiles (can extract to reusable MetricTile).
-Transactions table (needs sorting, filters, pagination, bulk actions).
+[x] Severity system (needs central util + config token mapping).
+[x] Metrics tiles (can extract to reusable MetricTile).
+[x] Transactions table (needs sorting, filters, pagination, bulk actions).
 Goal visualization (basic list; lacks creation modal, reorder, progress semantics).
 Balances (has spark bars; needs net worth aggregate + drill-ins).
 Color tokens / theming (ad‑hoc gradients, not centralized).
@@ -226,3 +226,13 @@ Vacation mode toggle UI.
 Rule conflict detection.
 Offline queue / cache snapshot.
 Billing / usage meter UI (once subscription backend ready).
+
+Show tooltip listing each upcoming bill with its due date (can reuse your existing tooltip/popover).
+Apply severity coloring to individual upcoming bill rows (e.g., bills within 3 days escalate).
+Share common UI primitives between both frontend folders to avoid divergence.
+Integrate severity: choose variant dynamically (e.g., rose for danger tiles).
+Add tooltip wrapper for hint.
+Add number formatting hook (currency/percent).
+Provide group component (MetricTileGroup) to auto-balance grid & a11y roles.
+Persist user chosen range in store.
+Add text search (merchant).
