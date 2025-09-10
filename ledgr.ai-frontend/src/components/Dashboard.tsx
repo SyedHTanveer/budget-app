@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { TopMetrics } from './dashboard/TopMetrics';
 import { BreakdownSection } from './dashboard/BreakdownSection';
 import { BalancesSection } from './dashboard/BalancesSection';
+import { PayPeriodCard } from './dashboard/PayPeriodCard';
 import { GoalsAndTransactions } from './dashboard/GoalsAndTransactions';
 import { BotMessageSquare, Landmark } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -26,7 +27,12 @@ function Dashboard() {
             </div>
         </div>
         <div className="flex flex-col flex-1 gap-6 rounded-t-md bg-neutral-900 w-full p-8 overflow-auto ">
-          <TopMetrics />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2 space-y-4">
+              <TopMetrics />
+            </div>
+            <PayPeriodCard />
+          </div>
           <BreakdownSection />
           <BalancesSection />
           <GoalsAndTransactions />
