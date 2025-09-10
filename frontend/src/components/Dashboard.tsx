@@ -5,6 +5,7 @@ import { Wallet, Shield, Target, Calendar, TrendingUp, TrendingDown, CreditCard,
 import { useGetBudgetStatusQuery, useGetAccountsQuery, useGetTransactionsQuery, useGetCategorySpendingQuery } from "../store/api";
 import { Skeleton } from "./ui/skeleton";
 import { useMemo } from "react";
+import { classifyUtilization, severityCardClasses } from "../lib/severity";
 
 interface ReserveBreakdownItem {
   label: string;
@@ -38,10 +39,30 @@ export function Dashboard() {
 
   const loadingPrimary = loadingBudget || loadingAccounts;
 
+  // Attempt severity classification (guard missing data gracefully)
+  let safeSeverity = { level: 'neutral' as const };
+  try {
+    if (budgetStatus && typeof budgetStatus.spent === 'number' && typeof budgetStatus.totalBudget === 'number' && budgetStatus.totalBudget > 0) {
+      safeSeverity = classifyUtilization({
+        spent: budgetStatus.spent,
+        totalBudget: budgetStatus.totalBudget,
+        now: new Date(),
+        cycleStart: budgetStatus.cycleStart ? new Date(budgetStatus.cycleStart) : new Date(Date.now() - 15 * 86400000),
+        cycleEnd: budgetStatus.cycleEnd ? new Date(budgetStatus.cycleEnd) : new Date(Date.now() + 15 * 86400000),
+        nextPayDate: budgetStatus.nextPayDate ? new Date(budgetStatus.nextPayDate) : new Date(Date.now() + 15 * 86400000),
+        recurringBills: (budgetStatus.recurringBills || []).map((b: any) => ({ amount: b.amount, dueDate: new Date(b.dueDate), paid: b.paid })),
+        cashOnHand: totalBalance,
+        metricType: 'spend'
+      });
+    }
+  } catch (e) {
+    // swallow; keep neutral
+  }
+
   return (
     <div className="space-y-6">
       {/* Safe to Spend Card */}
-      <Card className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+  <Card className={"p-6 " + severityCardClasses(safeSeverity.level)}>
         {loadingPrimary ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-40 mx-auto" />
@@ -53,7 +74,7 @@ export function Dashboard() {
           <div className="text-center">
             <div className="flex items-center justify-center mb-2">
               <Wallet className="h-6 w-6 text-emerald-600 mr-2" />
-              <span className="text-emerald-700">Safe to Spend</span>
+      <span className="text-emerald-700 capitalize">Safe to Spend</span>
             </div>
             <div className="text-4xl lg:text-5xl text-emerald-800 mb-2">
               ${safeToSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -63,6 +84,7 @@ export function Dashboard() {
             </p>
             <div className="flex items-center justify-center gap-2 mt-3" title="Confidence = expected income / upcoming bills coverage. High >2, Medium >1.2, else Low.">
               <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wide ${confidenceBadgeColor}`}>{confidence} confidence</span>
+      <span className="px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wide bg-black/5 dark:bg-white/5 text-xs" title={safeSeverity.reasons?.join(', ') || ''}>{safeSeverity.level}</span>
               <span className="text-[10px] text-emerald-700">Daily cap ${dailyCap.toFixed(2)}</span>
               <span
                 className="text-[10px] text-muted-foreground cursor-help border border-muted-foreground/20 rounded px-1"

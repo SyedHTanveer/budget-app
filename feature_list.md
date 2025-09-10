@@ -187,3 +187,42 @@ He’s tired of juggling Mint, Rocket Money, and his bank’s app. He doesn’t 
 * With one click, Alex accepts the new budget.
 
 ---
+
+Partially covered (refine or extract):
+
+Severity system (needs central util + config token mapping).
+Metrics tiles (can extract to reusable MetricTile).
+Transactions table (needs sorting, filters, pagination, bulk actions).
+Goal visualization (basic list; lacks creation modal, reorder, progress semantics).
+Balances (has spark bars; needs net worth aggregate + drill-ins).
+Color tokens / theming (ad‑hoc gradients, not centralized).
+Loading states (no table row skeleton variant yet).
+User menu (no settings screen, logout handler, preferences).
+AI assistant (no inline “explain” triggers or context injection).
+Accessibility (charts lack ARIA summaries; no skip link).
+Error/empty states (none defined yet).
+Sync status / connection management (missing UI).
+Still missing / high-value next:
+
+Transactions experience: filters panel, inline category edit, bulk select, pagination/virtualization.
+Budget & rollover drill-down: category drawer + rollover adjustment dialog.
+Rule engine UI (list + create modal + test preview).
+Goal creation & allocation modal (with form primitives).
+Connect Account modal (Plaid) + sync status badge.
+Toast + global mutation feedback system.
+Settings/Preferences page (cycle start, currency, theme).
+Alerts center component (recent alerts, severity tags).
+Net worth mini widget + Sankey placeholder.
+Command Palette (quick nav + “Ask AI”).
+Central formatting & severity utilities (formatCurrency, classifyVariance, severity → gradient/stroke map).
+Empty state & error boundary components (transactions, goals, rules).
+Accessibility pass (ARIA labels for charts, live region for toasts, focus ring consistency).
+Feature flag scaffolding (optional, lightweight context/provider).
+Dark theme token extraction (gradients, status colors, accent scales).
+Lower priority / later:
+
+Scenario forecasting panel.
+Vacation mode toggle UI.
+Rule conflict detection.
+Offline queue / cache snapshot.
+Billing / usage meter UI (once subscription backend ready).
