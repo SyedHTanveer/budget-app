@@ -20,6 +20,8 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
   const [accounts, setAccounts] = useState<LinkedAccount[]>([])
   const [accountsLoading, setAccountsLoading] = useState(false)
   const pollRef = useRef<number | null>(null)
+  // When user wants to add another institution after a successful/duplicate link
+  const autoLaunchRef = useRef(false)
   const { token } = useAuth()
 
   const fetchLinkToken = useCallback(async () => {
@@ -96,6 +98,16 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
 
   const { open: openPlaid, ready } = usePlaidLink({ token: linkToken || '', onSuccess, onExit: () => { /* noop */ } })
 
+  // Auto-launch Plaid after we fetched a brand new link token (for adding another institution)
+  useEffect(() => {
+    if (autoLaunchRef.current && ready && linkToken) {
+      // Close dialog before opening Plaid (focus handling) same as initial flow
+      onOpenChange(false)
+      setStatus('launching')
+      setTimeout(() => { openPlaid(); autoLaunchRef.current = false }, 40)
+    }
+  }, [ready, linkToken, openPlaid, onOpenChange])
+
   // Poll accounts briefly while pending until at least one appears (accounts are inserted before pending only if exchange returned them; here pending means no transactions yet but accounts may exist after DB insert)
   useEffect(() => {
     if (status === 'pending') {
@@ -114,11 +126,17 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
   }, [status, fetchAccounts, accounts.length])
 
   const handleLaunch = () => {
+    // If we've already linked something (success or already_linked), fetch a new token first.
+    if (status === 'success' || status === 'already_linked') {
+      // Reset token so usePlaidLink re-inits; then fetch a fresh link token and auto launch once ready
+      setLinkToken(null)
+      autoLaunchRef.current = true
+      fetchLinkToken()
+      return
+    }
     if (!ready || !linkToken) return
     setStatus('launching')
-    // close dialog before opening Plaid to avoid focus trap conflicts
     onOpenChange(false)
-    // small timeout to allow unmount animations (if any)
     setTimeout(() => { openPlaid() }, 40)
   }
 
@@ -178,14 +196,14 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
           )}
           <div className='flex justify-end gap-2 pt-2'>
             <Button variant='outline' onClick={() => onOpenChange(false)} className='h-8 px-3 text-xs'>Cancel</Button>
-            <Button disabled={!ready || status==='loading' || status==='launching' || status==='success' || status==='pending' || status==='already_linked' || !linkToken} onClick={handleLaunch} className='h-8 px-3 text-xs flex items-center gap-1'>
+            <Button disabled={!ready && !(status==='success' || status==='already_linked') || status==='loading' || status==='launching' || status==='pending'} onClick={handleLaunch} className='h-8 px-3 text-xs flex items-center gap-1'>
               {status==='loading' || status==='launching' ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <PlusCircle className='h-3.5 w-3.5' />}
               {status==='loading' && 'Loading…'}
               {status==='ready' && 'Launch Plaid'}
               {status==='launching' && 'Opening…'}
-              {status==='success' && 'Connected'}
+              {status==='success' && 'Add Another'}
               {status==='pending' && 'Syncing…'}
-              {status==='already_linked' && 'Already Linked'}
+              {status==='already_linked' && 'Add Another'}
               {status==='error' && 'Retry'}
             </Button>
           </div>
