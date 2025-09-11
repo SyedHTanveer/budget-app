@@ -236,3 +236,4 @@ Add number formatting hook (currency/percent).
 Provide group component (MetricTileGroup) to auto-balance grid & a11y roles.
 Persist user chosen range in store.
 Add text search (merchant).
+ synthetic spark history until a real history endpoint exists. (this is for balances)
