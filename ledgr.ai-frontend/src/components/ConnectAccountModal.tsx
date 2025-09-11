@@ -65,8 +65,14 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
     }
   }, [token])
 
-  // fetch when dialog opens first time
-  useEffect(() => { if (open && !linkToken && status === 'idle') fetchLinkToken() }, [open, linkToken, status, fetchLinkToken])
+  // fetch when dialog opens: ensure link token (first time) and refresh accounts list
+  useEffect(() => {
+    if (open) {
+      if (!linkToken && status === 'idle') fetchLinkToken()
+      // Always refresh accounts when opening dialog so user sees most recent
+      fetchAccounts()
+    }
+  }, [open, linkToken, status, fetchLinkToken, fetchAccounts])
 
   const onSuccess = useCallback(async (public_token: string) => {
     try {
@@ -132,11 +138,15 @@ export function ConnectAccountModal({ open, onOpenChange }: ConnectAccountModalP
       setLinkToken(null)
       autoLaunchRef.current = true
       fetchLinkToken()
+      // Proactively refresh accounts list (may include newly linked institution after previous success)
+      fetchAccounts()
       return
     }
     if (!ready || !linkToken) return
     setStatus('launching')
     onOpenChange(false)
+    // Kick off an early accounts refresh before Plaid finishes (in case accounts appear quickly)
+    fetchAccounts()
     setTimeout(() => { openPlaid() }, 40)
   }
 
