@@ -1,6 +1,8 @@
 import styles from './Sidebar.module.css'
 import { Button } from './ui/button'
 import { useState } from 'react'
+import { useAuth } from '../auth/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { 
   Home,
   PieChart,
@@ -25,6 +27,8 @@ type Tab = 'dashboard' | 'budget' | 'goals' | 'transactions' | 'calendar' | 'ale
 
 function Sidebar() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const tabs = [
     { id: 'dashboard' as Tab, label: 'Dashboard', icon: Home },
@@ -98,7 +102,14 @@ function Sidebar() {
                   <Settings className="mr-2 h-4 w-4" /> Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={(e) => { e.preventDefault(); /* logout */ }}>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  logout();
+                  navigate('/');
+                }}
+              >
                 <LogOut className="mr-2 h-4 w-4" /> Logout
               </DropdownMenuItem>
             </DropdownMenuContent>

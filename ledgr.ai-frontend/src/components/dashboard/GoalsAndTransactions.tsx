@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Skeleton } from '../ui/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '../../lib/utils';
-import { Calendar, ArrowUpDown, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ArrowUpDown, CheckSquare, Square, ChevronLeft, ChevronRight, ReceiptText } from 'lucide-react';
 
 // Placeholder upcoming bills (would be replaced by API data)
 const upcomingBillsSeed = () => {
@@ -40,7 +40,8 @@ function genTransactions() {
 type Range = 'today' | '7d' | '30d';
 type SortBy = 'date' | 'amount';
 
-export function GoalsAndTransactions() { // retained name for existing import
+export function 
+GoalsAndTransactions() { // retained name for existing import
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<Range>('today');
   const [sortBy, setSortBy] = useState<SortBy>('date');
@@ -114,9 +115,11 @@ export function GoalsAndTransactions() { // retained name for existing import
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 w-full">
+      <div className="flex flex-col w-full gap-4">
+      <div className="flex flex-row items-center gap-2"><Calendar className="h-4 w-4" /><p className="text-sm font-medium tracking-tight text-neutral-300">Upcoming bills</p></div>
       <Card className="flex flex-col flex-1 max-h-96">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">Upcoming Bills <Calendar className="h-4 w-4" /></CardTitle>
+          <CardTitle className="flex items-center gap-2 text-sm"></CardTitle>
         </CardHeader>
         <CardContent className="overflow-y-auto pr-1 space-y-2 text-xs">
           {loading ? Array.from({length:4}).map((_,i)=>(
@@ -140,10 +143,12 @@ export function GoalsAndTransactions() { // retained name for existing import
           ))}
         </CardContent>
       </Card>
+      </div>
+      <div className="flex flex-col w-full gap-4">
+      <div className="flex items-center gap-2 "><ReceiptText className="h-4 w-4" /><p className="text-sm font-medium tracking-tight text-neutral-300">Transactions</p></div>
       <Card className="flex flex-col flex-1 max-h-96">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Transactions</CardTitle>
             <div className="flex items-center gap-2">
               <div className="flex rounded-sm overflow-hidden border border-neutral-700/60">
                 {(['today','7d','30d'] as Range[]).map(r => (
@@ -219,6 +224,7 @@ export function GoalsAndTransactions() { // retained name for existing import
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

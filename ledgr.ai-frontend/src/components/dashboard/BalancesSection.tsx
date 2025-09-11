@@ -2,7 +2,7 @@ import { Card, CardContent } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
 import { useEffect, useState } from 'react';
 import { SparkBars } from '../ui/spark-bars';
-
+import { Wallet } from 'lucide-react';
 const balances = [
   { name: 'Checking', value: 2850.32, change: 120.5, history: [2500, 2525, 2550, 2620, 2700, 2790, 2850] },
   { name: 'High Yield Savings', value: 8200.0, change: 15.2, history: [8100, 8120, 8135, 8150, 8175, 8188, 8200] },
@@ -15,7 +15,10 @@ export function BalancesSection() {
   useEffect(() => { const t = setTimeout(()=>setLoading(false), 600); return ()=>clearTimeout(t); }, []);
   return (
     <div className="flex flex-col gap-3 w-full">
-      <p className="text-sm font-medium tracking-tight text-neutral-300">Balances</p>
+      <div className="flex items-center gap-2">
+        <Wallet className="h-4 w-4" />
+        <p className="text-sm font-medium tracking-tight text-neutral-300">Balances</p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {loading ? Array.from({ length: 4 }).map((_,i)=>(<Card key={i} className="h-24"><CardContent className="p-3 flex flex-col gap-2"><Skeleton className="h-3 w-24" /><Skeleton className="h-4 w-32" /><div className="flex gap-0.5 h-8 items-end">{Array.from({length:7}).map((__,k)=><Skeleton key={k} className="w-full h-full" />)}</div></CardContent></Card>)) : balances.map(b => {
       const positive = b.change >= 0;
