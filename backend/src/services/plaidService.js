@@ -1,5 +1,6 @@
 const { PlaidApi, Configuration, PlaidEnvironments } = require('plaid');
 const { db, encrypt, decrypt } = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
@@ -107,6 +108,7 @@ class PlaidService {
   const itemInstitutionId = institutionId;
       for (const account of accountsResponse.data.accounts) {
         const baseRecord = {
+          id: uuidv4(), // Generate UUID for new accounts
           user_id: userId,
           plaid_account_id: account.account_id,
           name: account.name,
