@@ -2,6 +2,23 @@
 
 Purpose: Rapid orientation for AI coding agents working on this full‑stack budgeting app. Focus on existing patterns – do not invent new architectures.
 
+## Memory System 🧠
+
+**CRITICAL**: Before starting any work, read `.memory/index.md` to understand:
+- What features are already built
+- Recent architectural decisions
+- Current project state and priorities
+- What's planned vs. what's done
+
+**After completing work**: Create a memory file documenting what was built and key decisions:
+1. Copy `.memory/TEMPLATE.md` to `.memory/YYYY-MM-DD_your-topic.md`
+2. Fill in the template with context, decisions, and outcomes
+3. Add summary entry to `.memory/index.md` under "Recent Sessions"
+4. Update "Current State" sections in index.md as needed
+5. Commit memory file with your code changes
+
+This ensures continuity across sessions and prevents rebuilding existing features.
+
 ## Architecture & Tech
 - Monorepo: `backend/` (Node.js Express + Knex + SQLite dev) and `frontend/` (Vite React TS, Redux Toolkit + RTK Query, shadcn/ui).
 - API base path: `/api/v1`. Frontend dev proxy auto forwards (see `frontend/vite.config.ts`).
