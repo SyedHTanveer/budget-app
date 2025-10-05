@@ -19,6 +19,7 @@ const plaidRoutes = require('./routes/plaid');
 const subscriptionRoutes = require('./routes/subscription');
 const privacyRoutes = require('./routes/privacy');
 const vacationRoutes = require('./routes/vacation');
+const opsRoutes = require('./routes/ops');
 
 const env = loadEnv();
 const app = express();
@@ -55,6 +56,7 @@ api.use('/plaid', plaidRoutes);
 api.use('/subscription', subscriptionRoutes);
 api.use('/privacy', privacyRoutes);
 api.use('/vacation', vacationRoutes);
+api.use('/ops', opsRoutes);
 
 app.use('/api/v1', api);
 

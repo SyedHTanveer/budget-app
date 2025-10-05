@@ -41,12 +41,13 @@ BullMQ queues: `plaid`, `export`, `alerts`, `rollover` (graceful no‑op if Redi
 
 1. Install deps: `npm install` in both `backend/` and `frontend/` (or use a workspace script if added later)
 2. Run migrations: `cd backend && npx knex migrate:latest`
-3. Start dev (concurrent): VS Code task "Start Full Development" or manually:
+3. Seed database (optional): `cd backend && npx knex seed:run`
+4. Start dev (concurrent): VS Code task "Start Full Development" or manually:
    - Backend: `cd backend && npm run dev`
    - Frontend: `cd frontend && npm run dev`
-4. Open app at frontend dev URL (Vite) – API requests proxy to `/api/v1`
+5. Open app at frontend dev URL (Vite) – API requests proxy to `/api/v1`
 
-Reset dev DB: delete `backend/data/budget_app.db` then re‑run migrations.
+Reset dev DB: delete `backend/data/budget_app.db` then re‑run migrations (and seeds if needed).
 
 ### Redis (Docker)
 

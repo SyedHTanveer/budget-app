@@ -30,8 +30,6 @@ function Dashboard() {
             </div>
         </div>
         <div className="flex flex-col flex-1 gap-6 rounded-t-md bg-neutral-900 w-full p-8 overflow-auto ">
-          <TopMetrics />   
-          <PayPeriodCard />
           {/* <BreakdownSection /> */}
           <BalancesSection />
           <GoalsAndTransactions />

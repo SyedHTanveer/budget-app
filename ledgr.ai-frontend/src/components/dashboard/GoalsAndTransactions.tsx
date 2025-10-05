@@ -1,80 +1,112 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Skeleton } from '../ui/skeleton';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { cn } from '../../lib/utils';
-import { Calendar, ArrowUpDown, CheckSquare, Square, ChevronLeft, ChevronRight, ReceiptText } from 'lucide-react';
+import { ArrowUpDown, CheckSquare, Square, ChevronLeft, ChevronRight, ReceiptText, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../auth/useAuth';
+import { Button } from '../ui/button';
 
-// Placeholder upcoming bills (would be replaced by API data)
-const upcomingBillsSeed = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  return [
-    { id: 'rent', name: 'Rent', amount: 1450, dueDate: new Date(y, m, 3) },
-    { id: 'utilities', name: 'Utilities', amount: 180, dueDate: new Date(y, m, 10) },
-    { id: 'streaming', name: 'Streaming', amount: 28, dueDate: new Date(y, m, 12) },
-    { id: 'insurance', name: 'Insurance', amount: 95, dueDate: new Date(y, m, 20) },
-    { id: 'phone', name: 'Mobile Plan', amount: 70, dueDate: new Date(y, m, 22) }
-  ].filter(b => b.dueDate >= now);
-};
-
-// Generate mock transactions for last 30 days
-function genTransactions() {
-  const merchants = ['Starbucks', 'Shell', 'Whole Foods', 'Payroll', 'Spotify', 'Zappos', 'Target', 'Trader Joes', 'Apple', 'Uber'];
-  const cats = ['Coffee', 'Transport', 'Groceries', 'Income', 'Subscriptions', 'Shopping', 'Groceries', 'Tech', 'Transport'];
-  const now = new Date();
-  const list = [] as { id: string; date: Date; merchant: string; category: string; amount: number }[];
-  for (let i = 0; i < 60; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
-    const d = new Date(now.getTime() - daysAgo * 86400000);
-    const merchant = merchants[Math.floor(Math.random()*merchants.length)];
-    const category = cats[Math.floor(Math.random()*cats.length)];
-    const isIncome = merchant === 'Payroll' && Math.random() < 0.4;
-    const amount = isIncome ? +(1500 + Math.random()*1200).toFixed(2) : -+( (5 + Math.random()*200).toFixed(2) );
-    list.push({ id: 't'+i, date: d, merchant, category, amount });
-  }
-  return list.sort((a,b)=>b.date.getTime() - a.date.getTime());
+interface Transaction {
+  id: string;
+  name: string;
+  date: string;
+  amount: number;
+  category: string | null;
+  account_name?: string;
+  account_type?: string;
+  description?: string;
 }
 
 type Range = 'today' | '7d' | '30d';
 type SortBy = 'date' | 'amount';
 
 export function 
-GoalsAndTransactions() { // retained name for existing import
+GoalsAndTransactions() {
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState<Range>('today');
+  const [range, setRange] = useState<Range>('30d');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [page, setPage] = useState(1);
   const pageSize = 8;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [transactions] = useState(()=>genTransactions());
-  const bills = useMemo(()=>upcomingBillsSeed(), []);
+  // Fetch transactions from API
+  const fetchTransactions = useCallback(async () => {
+    if (!token) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      // Calculate date range
+      const now = new Date();
+      const startDate = new Date(now);
+      if (range === 'today') {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (range === '7d') {
+        startDate.setDate(now.getDate() - 7);
+      } else {
+        startDate.setDate(now.getDate() - 30);
+      }
 
-  useEffect(()=>{ const t = setTimeout(()=>setLoading(false), 900); return ()=>clearTimeout(t); }, []);
+      const params = new URLSearchParams({
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: now.toISOString().split('T')[0],
+        limit: '200', // Fetch more to handle client-side filtering
+      });
+
+      const res = await fetch(`/api/v1/transactions?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) throw new Error('Failed to load transactions');
+      
+      const data = await res.json();
+      setTransactions(data.transactions || []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Transaction fetch error');
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [token, range]);
+
+  useEffect(() => { 
+    fetchTransactions(); 
+  }, [fetchTransactions]);
 
   const now = useMemo(()=> new Date(), []);
+  
+  // Filter transactions by date range (already done in API call, but keeping for consistency)
   const rangeFiltered = useMemo(()=>{
     return transactions.filter(t => {
-      const diffDays = Math.floor((now.getTime() - t.date.getTime())/86400000);
+      const txDate = new Date(t.date);
+      const diffDays = Math.floor((now.getTime() - txDate.getTime())/86400000);
       if (range === 'today') return diffDays === 0;
       if (range === '7d') return diffDays < 7;
       return diffDays < 30;
     });
   }, [transactions, range, now]);
 
-  const categoryOptions = useMemo(()=>['All', ...Array.from(new Set(transactions.map(t=>t.category)))], [transactions]);
+  const categoryOptions = useMemo(()=>['All', ...Array.from(new Set(transactions.map(t=>t.category || 'Uncategorized')))], [transactions]);
 
   const filtered = useMemo(()=>{
     let list = rangeFiltered;
-    if (categoryFilter !== 'All') list = list.filter(t=>t.category === categoryFilter);
+    if (categoryFilter !== 'All') list = list.filter(t=>(t.category || 'Uncategorized') === categoryFilter);
     list = [...list].sort((a,b)=>{
       let cmp = 0;
-      if (sortBy === 'date') cmp = a.date.getTime() - b.date.getTime();
-      else cmp = a.amount - b.amount;
+      if (sortBy === 'date') {
+        const aDate = new Date(a.date).getTime();
+        const bDate = new Date(b.date).getTime();
+        cmp = aDate - bDate;
+      } else {
+        cmp = a.amount - b.amount;
+      }
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return list;
@@ -105,17 +137,13 @@ GoalsAndTransactions() { // retained name for existing import
 
   const bulkCount = selected.size;
 
-  // Bills severity coloring based on days until due
-  const billRows = bills.map(b => {
-    const days = Math.ceil((b.dueDate.getTime() - now.getTime())/86400000);
-    let color = 'text-neutral-300';
-    if (days <= 3) color = 'text-rose-400'; else if (days <= 7) color = 'text-amber-400';
-    return { ...b, days, color };
-  }).sort((a,b)=>a.dueDate.getTime()-b.dueDate.getTime());
-
   return (
-    <div className="flex flex-col lg:flex-row gap-4 w-full">
-      <div className="flex flex-col w-full gap-4">
+    <div className="flex flex-col lg:flex-row gap-4 w-full">{error && (
+        <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded p-2 mb-2">
+          {error}
+        </div>
+      )}
+      {/* <div className="flex flex-col w-full gap-4">
       <div className="flex flex-row items-center gap-2"><Calendar className="h-4 w-4" /><p className="text-sm font-medium tracking-tight text-neutral-300">Upcoming bills</p></div>
       <Card className="flex flex-col flex-1 max-h-96">
         <CardHeader>
@@ -143,9 +171,22 @@ GoalsAndTransactions() { // retained name for existing import
           ))}
         </CardContent>
       </Card>
-      </div>
+      </div> */}
       <div className="flex flex-col w-full gap-4">
-      <div className="flex items-center gap-2 "><ReceiptText className="h-4 w-4" /><p className="text-sm font-medium tracking-tight text-neutral-300">Transactions</p></div>
+      <div className="flex items-center gap-2 ">
+        <ReceiptText className="h-4 w-4" />
+        <p className="text-sm font-medium tracking-tight text-neutral-300">Transactions</p>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="ml-auto h-7 px-2 text-[11px]" 
+          onClick={fetchTransactions} 
+          disabled={refreshing || loading} 
+          title="Refresh transactions"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
       <Card className="flex flex-col flex-1 max-h-96">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -204,9 +245,9 @@ GoalsAndTransactions() { // retained name for existing import
                     <TableRow key={t.id} className={cn('hover:bg-neutral-800/40', selected.has(t.id) && 'bg-neutral-800/60')}
                       onClick={()=>toggleOne(t.id)}>
                       <TableCell className="text-neutral-500">{selected.has(t.id)? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}</TableCell>
-                      <TableCell className="text-neutral-400">{t.date.toLocaleDateString(undefined,{month:'2-digit', day:'2-digit'})}</TableCell>
-                      <TableCell className="text-neutral-300 max-w-[120px] truncate" title={t.merchant}>{t.merchant}</TableCell>
-                      <TableCell className="hidden md:table-cell text-neutral-400">{t.category}</TableCell>
+                      <TableCell className="text-neutral-400">{new Date(t.date).toLocaleDateString(undefined,{month:'2-digit', day:'2-digit'})}</TableCell>
+                      <TableCell className="text-neutral-300 max-w-[120px] truncate" title={t.name}>{t.name}</TableCell>
+                      <TableCell className="hidden md:table-cell text-neutral-400">{t.category || 'Uncategorized'}</TableCell>
                       <TableCell className={cn('text-right tabular-nums', t.amount < 0 ? 'text-red-400' : 'text-emerald-400')}>{t.amount<0?'-':'+'}${Math.abs(t.amount).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}

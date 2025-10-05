@@ -100,6 +100,8 @@ class PlaidService {
       }
 
       // Store / upsert accounts with extended metadata
+      // Uses onConflict to handle duplicate (user_id, plaid_account_id) pairs
+      // This ensures idempotent ingestion - re-linking same account updates existing record
       const accounts = [];
   const itemInstitutionName = institutionName;
   const itemInstitutionId = institutionId;

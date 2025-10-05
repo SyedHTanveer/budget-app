@@ -5,7 +5,8 @@ const { db } = require('./config/database');
 const JSZip = require('jszip');
 const { toCSV } = require('./utils/csv');
 
-createWorker('plaid', async job => {
+// Workers will return null if Redis unavailable - gracefully handle
+const plaidWorker = createWorker('plaid', async job => {
   if (job.name === 'initial_backfill') {
     const { userId, itemId } = job.data;
     const { logger } = require('./logger');
@@ -21,7 +22,7 @@ createWorker('plaid', async job => {
   }
 });
 
-createWorker('export', async job => {
+const exportWorker = createWorker('export', async job => {
   if (job.name === 'generate_user_export') {
     const { userId, jobId } = job.data;
     logger.info({ jobId, userId }, 'export job started');
@@ -80,7 +81,7 @@ createWorker('export', async job => {
   }
 });
 
-createWorker('alerts', async job => {
+const alertsWorker = createWorker('alerts', async job => {
   if (job.name === 'evaluate_user_alerts') {
     const { userId } = job.data;
     const AlertsEngine = require('./services/alertsEngine');
@@ -93,7 +94,7 @@ createWorker('alerts', async job => {
   }
 });
 
-createWorker('rollover', async job => {
+const rolloverWorker = createWorker('rollover', async job => {
   if (job.name === 'close_month') {
     const { userId } = job.data;
     const RolloverService = require('./services/rolloverService');
@@ -101,4 +102,8 @@ createWorker('rollover', async job => {
   }
 });
 
-logger.info('Worker started');
+if (plaidWorker || exportWorker || alertsWorker || rolloverWorker) {
+  logger.info('Worker started with available queues');
+} else {
+  logger.warn('Worker started but Redis unavailable - background jobs disabled');
+}
